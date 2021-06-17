@@ -1,0 +1,4 @@
+com\example\tenniserservice\messaging\BaseMessage$BaseMessageBuilder.class
+com\example\tenniserservice\messaging\TenniserUpdateMessage$TenniserUpdateMessageBuilderImpl.class
+com\example\tenniserservice\messaging\TenniserUpdateMessage$TenniserUpdateMessageBuilder.class
+com\example\tenniserservice\tenniser\Tenniser$TenniserBuilder.class
