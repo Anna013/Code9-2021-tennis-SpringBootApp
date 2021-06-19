@@ -3,6 +3,9 @@ package com.example.tenniscourtservice.tennis;
 
 import com.example.tenniscourtservice.exception.AlreadyExistsException;
 
+import com.example.tenniscourtservice.messaging.MessageFactory;
+import com.example.tenniscourtservice.messaging.MessageService;
+import com.example.tenniscourtservice.messaging.TennisCourtMessage;
 import feign.Feign;
 import feign.gson.GsonDecoder;
 import lombok.AllArgsConstructor;
@@ -23,12 +26,12 @@ public class TennisCourtService {
 
     private final TennisCourtRepository tennisCourtRepository;
     private final TimeslotRepository timeslotRepository;
+    private final MessageService messageService;
 
-      //nece da importuje clienta
-//    private final TenniserClient userClient = Feign.builder()
-//            .decoder(new GsonDecoder())
-//            .target(TenniserClient.class, "http://localhost:8082");
 
+    private final TenniserClient tenniserClient = Feign.builder()
+            .decoder(new GsonDecoder())
+            .target(TenniserClient.class, "http://localhost:8082");
 
 
     List<TennisCourt> findAll() {
@@ -43,7 +46,7 @@ public class TennisCourtService {
         if (!tennisCourtRepository.existsByName(tc.getName())) {
             tennisCourtRepository.save(tc);
         } else {
-           throw new AlreadyExistsException(String.format("Tennis court with name '%s' already exists", tc.getName()));
+            throw new AlreadyExistsException(String.format("Tennis court with name '%s' already exists", tc.getName()));
         }
     }
 
@@ -51,28 +54,28 @@ public class TennisCourtService {
         if (tennisCourtRepository.existsByName(name)) {
             tennisCourtRepository.deleteByName(name);
         } else {
-           throw new AlreadyExistsException(String.format("Tennis court with name '%s' not exists", name));
+            throw new AlreadyExistsException(String.format("Tennis court with name '%s' not exists", name));
         }
     }
 
 
     //timeslotService
 
-    public boolean workingHour(LocalTime startTime, LocalTime endTime,LocalDate date){
-        boolean start =  startTime.isAfter(LocalTime.of( 18 , 0 ));
-        boolean end =  endTime.isBefore(LocalTime.of( 23 , 0 ));
-        boolean start2 =  startTime.isAfter(LocalTime.of( 17 , 0 ));
-        boolean end2 =  endTime.isBefore(LocalTime.of( 22 , 0));
+    public boolean workingHour(LocalTime startTime, LocalTime endTime, LocalDate date) {
+        boolean start = startTime.isAfter(LocalTime.of(18, 0));
+        boolean end = endTime.isBefore(LocalTime.of(23, 0));
+        boolean start2 = startTime.isAfter(LocalTime.of(17, 0));
+        boolean end2 = endTime.isBefore(LocalTime.of(22, 0));
         int day = date.getDayOfWeek().getValue();
 
-        if((start && end) && (day == 1 || day == 2 || day == 3 || day == 4 || day == 5)){
+        if ((start && end) && (day == 1 || day == 2 || day == 3 || day == 4 || day == 5)) {
             return true;
         }
         else return (start2 && end2) && (day == 6 || day == 7);
     }
 
 
-    public boolean overlapping(Date date, LocalTime start, LocalTime end){
+    public boolean overlapping(Date date, LocalTime start, LocalTime end) {
         List<Timeslot> list = timeslotRepository.findByDate(date);
         for (Timeslot timeslot : list) {
             boolean isBefore = start.isBefore((timeslot.getStartTime().toLocalTime()));
@@ -93,19 +96,32 @@ public class TennisCourtService {
                 .toLocalDate();
     }
 
-    public void reserveTimeslot(Timeslot ts){
+
+
+    public void reserveTimeslot(Timeslot ts) {
         long period = Duration.between(ts.getStartTime().toLocalTime(), ts.getEndTime().toLocalTime()).getSeconds();
         int compareDate = ts.getDate().compareTo(new Date());
-        boolean workingHour = workingHour(ts.getStartTime().toLocalTime(),ts.getEndTime().toLocalTime(), toLocalDate(ts.getDate()));
+        boolean workingHour = workingHour(ts.getStartTime().toLocalTime(), ts.getEndTime().toLocalTime(), toLocalDate(ts.getDate()));
         boolean overlapping = overlapping(ts.getDate(), ts.getStartTime().toLocalTime(), ts.getEndTime().toLocalTime());
+        List<Timeslot> list = timeslotRepository.existsByTenniserId(ts.getTenniserId());
+        Tenniser tenniser = tenniserClient.getTenniser(ts.getTenniserId());
 
-        if( (period < 7200 && period > 1800) && compareDate >= 0 && workingHour && !overlapping) {
-            if(!timeslotRepository.existsByTenniserIdAndDate(ts.getTenniserId(), ts.getDate()) &&
-                    timeslotRepository.existsByTenniserId(ts.getTenniserId()).size() < 6 )
-                 timeslotRepository.save(ts);
-            else {
-                throw new AlreadyExistsException(String.format("Timelsot for tenniser with id: '%d', already exists", ts.getTenniserId()));
+        if ((period < 7200 && period > 1800) && compareDate >= 0 && workingHour && !overlapping) {
+            if (!timeslotRepository.existsByTenniserIdAndDate(ts.getTenniserId(), ts.getDate())) {
+                if(list.size() < 5) {
+                    timeslotRepository.save(ts);
+                    publishMessageIfReserved(ts, ReserveOperation.CREATE);
+                }
+                else if (list.size() > 5 && tenniser.isPaid()) {
+                    timeslotRepository.save(ts);
+                    publishMessageIfReserved(ts, ReserveOperation.CREATE);
+                }
+                else
+                    throw new AlreadyExistsException(String.format("Timelsot for tenniser with id: '%d', is not paid", ts.getTenniserId()));
             }
+        }
+        else {
+            throw new AlreadyExistsException(String.format("Timelsot for tenniser with id: '%d', already exists", ts.getTenniserId()));
         }
     }
 
@@ -115,6 +131,12 @@ public class TennisCourtService {
         } else {
             throw new AlreadyExistsException(String.format("Timeslot  with id: '%d', not exists", id));
         }
+    }
+
+    private void publishMessageIfReserved(Timeslot timeslot, ReserveOperation operation) {
+            TennisCourtMessage message = MessageFactory.createMessage(timeslot, operation);
+            messageService.sendMessageToTopic(message);
+
     }
 
 }
