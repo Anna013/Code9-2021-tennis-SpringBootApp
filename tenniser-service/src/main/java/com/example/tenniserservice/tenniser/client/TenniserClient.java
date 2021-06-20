@@ -5,10 +5,9 @@ import feign.RequestLine;
 
 import java.util.List;
 
-//@FeignClient(name = "tennis-court-service")
 public interface TenniserClient {
 
-    //primer
+
     @RequestLine("GET /api/tennisers")
-    List<Tenniser> getAll();
+    Tenniser getTenniser(Integer id);
 }
