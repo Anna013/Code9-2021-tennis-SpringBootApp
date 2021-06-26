@@ -3,9 +3,13 @@ package com.example.tenniscourtservice.tennis;
 
 import com.example.tenniscourtservice.exception.AlreadyExistsException;
 
+import com.example.tenniscourtservice.exception.NotFoundException;
 import com.example.tenniscourtservice.messaging.MessageFactory;
 import com.example.tenniscourtservice.messaging.MessageService;
 import com.example.tenniscourtservice.messaging.TennisCourtMessage;
+import com.example.tenniserservice.tenniser.Tenniser;
+import com.example.tenniserservice.tenniser.client.TenniserClient;
+
 import feign.Feign;
 import feign.gson.GsonDecoder;
 import lombok.AllArgsConstructor;
@@ -39,7 +43,8 @@ public class TennisCourtService {
     }
 
     public TennisCourt findOneByName(String name) {
-        return tennisCourtRepository.findByName(name);
+        return tennisCourtRepository.findByName(name)
+                .orElseThrow(() -> new NotFoundException("Tennis court is not found!"));
     }
 
     public void createTennisCourt(TennisCourt tc) {
@@ -98,22 +103,25 @@ public class TennisCourtService {
 
 
 
-    public void reserveTimeslot(Timeslot ts) {
+    public void reserveTimeslot(Timeslot ts, String courtName) {
         long period = Duration.between(ts.getStartTime().toLocalTime(), ts.getEndTime().toLocalTime()).getSeconds();
         int compareDate = ts.getDate().compareTo(new Date());
         boolean workingHour = workingHour(ts.getStartTime().toLocalTime(), ts.getEndTime().toLocalTime(), toLocalDate(ts.getDate()));
         boolean overlapping = overlapping(ts.getDate(), ts.getStartTime().toLocalTime(), ts.getEndTime().toLocalTime());
         List<Timeslot> list = timeslotRepository.existsByTenniserId(ts.getTenniserId());
         Tenniser tenniser = tenniserClient.getTenniser(ts.getTenniserId());
+        TennisCourt court = tennisCourtRepository.findByName(courtName);
 
         if ((period < 7200 && period > 1800) && compareDate >= 0 && workingHour && !overlapping) {
             if (!timeslotRepository.existsByTenniserIdAndDate(ts.getTenniserId(), ts.getDate())) {
                 if(list.size() < 5) {
                     timeslotRepository.save(ts);
+                    court.getTimeslots().add(ts);
                     publishMessageIfReserved(ts, ReserveOperation.CREATE);
                 }
                 else if (list.size() > 5 && tenniser.isPaid()) {
                     timeslotRepository.save(ts);
+                    court.getTimeslots().add(ts);
                     publishMessageIfReserved(ts, ReserveOperation.CREATE);
                 }
                 else

@@ -1,14 +1,14 @@
-package com.example.tenniserservice.messaging;
+package com.example.notificationservice.messaging;
+
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
-import lombok.experimental.SuperBuilder;
+import lombok.*;
+
 
 @EqualsAndHashCode(callSuper = true)
-@Value
-@SuperBuilder
-public class TenniserUpdateMessage extends BaseMessage{
+@NoArgsConstructor
+@Getter
+public class ReservationMessage extends BaseMessage {
 
     @JsonProperty("email")
     String email;
@@ -20,4 +20,3 @@ public class TenniserUpdateMessage extends BaseMessage{
     String notificationType;
 
 }
-

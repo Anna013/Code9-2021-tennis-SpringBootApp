@@ -38,11 +38,10 @@ public class TennisCourtController {
 
     //Timeslot
 
-    @PostMapping("/reserve")
-    public void reserveTimeslot(@RequestBody final Timeslot ts){
-        tennisCourtService.reserveTimeslot(ts);
+    @PostMapping("/reserve/{name}")
+    public void reserveTimeslot(@RequestBody final Timeslot ts, @PathVariable("name") String courtName){
+        tennisCourtService.reserveTimeslot(ts, courtName);
     }
-
 
     @DeleteMapping("/{id}")
     public void deleteTennisCourt(@PathVariable("id") final Integer id) {

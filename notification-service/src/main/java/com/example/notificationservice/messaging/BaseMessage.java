@@ -1,15 +1,16 @@
-package com.example.tenniserservice.messaging;
+package com.example.notificationservice.messaging;
+
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
-
-import java.time.OffsetDateTime;
 
 @Setter
 @Getter
 @SuperBuilder
+@NoArgsConstructor
 public abstract class BaseMessage {
 
     @JsonProperty("version")

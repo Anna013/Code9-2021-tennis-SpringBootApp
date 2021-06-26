@@ -11,4 +11,9 @@ public interface TenniserRepository extends JpaRepository<Tenniser, Long> {
 
     void deleteByIdTenniser(Integer id);
 
+    Tenniser findByIdTenniser(Integer id);
+
+     Tenniser findByEmail(String email);
+
+
 }

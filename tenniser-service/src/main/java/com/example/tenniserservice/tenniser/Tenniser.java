@@ -1,15 +1,13 @@
 package com.example.tenniserservice.tenniser;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import javax.persistence.*;
 
 @Entity
 //@NamedQuery(name="Tenniser.findAll", query="SELECT t FROM Tenniser t")
 @Getter
+@Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -27,10 +25,15 @@ public class Tenniser {
     @Column(name="first_name")
     private String firstName;
 
-    @Column(name="is_paid")
-    private byte isPaid;
-
     @Column(name="last_name")
     private String lastName;
+
+    @Column(name="is_paid")
+    private boolean isPaid;
+
+    @Column(name="method_of_payment")
+    private String methodOfPayment; //dodati u bazi
+
+
 
 }
